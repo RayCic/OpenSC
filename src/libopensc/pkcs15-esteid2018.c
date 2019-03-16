@@ -44,7 +44,7 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
   sc_card_t *card = p15card->card;
   u8 buff[128];
   int r, i;
-  size_t field_length = 0;
+  size_t field_length = 0, taglen;
   sc_path_t tmppath;
 
   set_string(&p15card->tokeninfo->label, "ID-kaart");
@@ -55,13 +55,14 @@ static int sc_pkcs15emu_esteid2018_init(sc_pkcs15_card_t *p15card) {
   LOG_TEST_RET(card->ctx, sc_select_file(card, &tmppath, NULL), "SELECT docnr");
   r = sc_read_binary(card, 0, buff, 11, 0);
   LOG_TEST_RET(card->ctx, r, "read docnr failed");
-  buff[MIN((size_t)r, (sizeof buff) - 1)] = '\0';
-  for (i = 2; buff[i] != '\0'; i++)
-    if (!isalnum(buff[i]))
-      LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
-  set_string(&p15card->tokeninfo->serial_number,
-             (const char *)&buff[2]); // FIXME: read tag
+  const unsigned char *tag = sc_asn1_find_tag(card->ctx, buff, r, 0x04, &taglen);
+  if (tag == NULL)
+    LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
 
+  for (size_t j = 0; j < taglen; j++)
+    if (!isalnum(tag[j]))
+      LOG_FUNC_RETURN(card->ctx, SC_ERROR_INTERNAL);
+  p15card->tokeninfo->serial_number = strndup((const char *)tag, taglen);
   p15card->tokeninfo->flags = SC_PKCS15_TOKEN_EID_COMPLIANT | SC_PKCS15_TOKEN_READONLY;
 
   /* add certificates */

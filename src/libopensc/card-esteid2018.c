@@ -284,7 +284,9 @@ int esteid_get_pin_remaining_tries(sc_card_t *card, int pin_reference) {
   LOG_TEST_RET(card->ctx, sc_transmit_apdu(card, &apdu), "APDU transmit failed");
   LOG_TEST_RET(card->ctx, sc_check_sw(card, apdu.sw1, apdu.sw2), "GET DATA(pin info) failed");
 
-  return apdu_resp[13]; // FIXME: tag 0x9B
+  // XXX: sc_asn1_find_tag with the following payload (to get to tag 0x9B):
+  // https://lapo.it/asn1js/#cB6_gQEaoBiaAQObAQOhEIwG8wAAc0MAnAbzAABzQwA
+  return apdu_resp[13];
 }
 
 static int esteid_pin_cmd(sc_card_t *card, struct sc_pin_cmd_data *data, int *tries_left) {
@@ -337,7 +339,7 @@ static int esteid_init(sc_card_t *card) {
   card->drv_data = priv;
   card->cla = 0x00;
   card->caps = SC_CARD_CAP_ISO7816_PIN_INFO;
-  card->max_recv_size = 233; // FIXME: empirical
+  card->max_recv_size = 233; // XXX: empirical, not documented
 
   flags = SC_ALGORITHM_ECDSA_RAW | SC_ALGORITHM_ECDH_CDH_RAW | SC_ALGORITHM_ECDSA_HASH_NONE;
   ext_flags = SC_ALGORITHM_EXT_EC_NAMEDCURVE | SC_ALGORITHM_EXT_EC_UNCOMPRESES;
